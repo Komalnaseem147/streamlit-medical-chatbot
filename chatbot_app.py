@@ -1,5 +1,5 @@
 import streamlit as st
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from peft import PeftModel
 import torch
 
@@ -10,9 +10,16 @@ def load_model():
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     tokenizer.pad_token = tokenizer.eos_token
 
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.float16,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4"
+    )
+
     base_model = AutoModelForCausalLM.from_pretrained(
         model_id,
-        torch_dtype=torch.float16,  # use float32 if Streamlit Cloud throws CUDA error
+        quantization_config=bnb_config,
         device_map="auto"
     )
 
@@ -44,7 +51,7 @@ def get_response(question):
     return decoded.split("### Response:")[-1].strip()
 
 # Streamlit UI
-st.title(" Medical Chatbot")
+st.title("Medical Chatbot")
 
 user_question = st.text_area("Ask a medical question:")
 
@@ -54,5 +61,6 @@ if st.button("Get Response"):
             answer = get_response(user_question)
             st.success("**Response:**")
             st.markdown(answer)
+            
     else:
         st.warning("Please enter a question.")
