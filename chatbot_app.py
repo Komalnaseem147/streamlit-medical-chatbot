@@ -1,13 +1,21 @@
 import streamlit as st
+import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from peft import PeftModel
-import torch
+from huggingface_hub import login
+
+# Log in using Hugging Face token from Streamlit secrets
+login(token=st.secrets["HUGGINGFACE_TOKEN"])
 
 # Load model and tokenizer once
 @st.cache_resource
 def load_model():
     model_id = "meta-llama/Llama-3.2-3B-Instruct"
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_id,
+        token=st.secrets["HUGGINGFACE_TOKEN"]
+    )
     tokenizer.pad_token = tokenizer.eos_token
 
     bnb_config = BitsAndBytesConfig(
@@ -20,10 +28,14 @@ def load_model():
     base_model = AutoModelForCausalLM.from_pretrained(
         model_id,
         quantization_config=bnb_config,
-        device_map="auto"
+        device_map="auto",
+        token=st.secrets["HUGGINGFACE_TOKEN"]
     )
 
-    model = PeftModel.from_pretrained(base_model, "./llama3-medchatbot/checkpoint-17850")
+    model = PeftModel.from_pretrained(
+        base_model,
+        "./llama3-medchatbot/checkpoint-17850"
+    )
     model.eval()
 
     return tokenizer, model
@@ -51,7 +63,7 @@ def get_response(question):
     return decoded.split("### Response:")[-1].strip()
 
 # Streamlit UI
-st.title("Medical Chatbot")
+st.title("🩺 Medical Chatbot")
 
 user_question = st.text_area("Ask a medical question:")
 
@@ -61,6 +73,5 @@ if st.button("Get Response"):
             answer = get_response(user_question)
             st.success("**Response:**")
             st.markdown(answer)
-            
     else:
         st.warning("Please enter a question.")
