@@ -14,7 +14,7 @@ def load_model():
     
     tokenizer = AutoTokenizer.from_pretrained(
         model_id,
-        token=st.secrets["HUGGINGFACE_TOKEN"]
+        use_auth_token=st.secrets["HUGGINGFACE_TOKEN"]
     )
     tokenizer.pad_token = tokenizer.eos_token
 
@@ -29,7 +29,7 @@ def load_model():
         model_id,
         quantization_config=bnb_config,
         device_map="auto",
-        token=st.secrets["HUGGINGFACE_TOKEN"]
+       use_auth_token=st.secrets["HUGGINGFACE_TOKEN"]
     )
 
     model = PeftModel.from_pretrained(
