@@ -6,8 +6,9 @@ import torch
 # Load model and tokenizer once
 @st.cache_resource
 def load_model():
-    checkpoint_path = "./llama3-medchatbot/checkpoint-17850"
-    tokenizer = AutoTokenizer.from_pretrained(checkpoint_path)
+    # Load tokenizer from the base model
+    model_id = "meta-llama/Llama-3.2-3B-Instruct"
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
     tokenizer.pad_token = tokenizer.eos_token
 
     bnb_config = BitsAndBytesConfig(
@@ -17,8 +18,15 @@ def load_model():
         bnb_4bit_quant_type="nf4"
     )
 
-    # Load base model separately if needed, or assume checkpoint includes it
-    base_model = AutoModelForCausalLM.from_pretrained(checkpoint_path, quantization_config=bnb_config, device_map="auto")
+    # Load base model
+    base_model = AutoModelForCausalLM.from_pretrained(
+        model_id,
+        quantization_config=bnb_config,
+        device_map="auto"
+    )
+
+    # Apply PEFT weights from checkpoint
+    checkpoint_path = "./llama3-medchatbot/checkpoint-17850"
     model = PeftModel.from_pretrained(base_model, checkpoint_path)
     model.eval()
 
@@ -29,8 +37,8 @@ tokenizer, model = load_model()
 # Inference function
 def get_response(question):
     prompt = f"""### Instruction: You are a medical assistant. Answer the following question in a short and clear way.
-### Input: {question}
-### Response:"""
+    ### Input: {question}
+    ### Response:"""
 
     inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
     with torch.no_grad():
@@ -57,6 +65,5 @@ if st.button("Get Response"):
             answer = get_response(user_question)
             st.success("**Response:**")
             st.markdown(answer)
-            
     else:
         st.warning("Please enter a question.")
