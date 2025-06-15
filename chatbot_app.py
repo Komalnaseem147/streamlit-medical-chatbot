@@ -9,12 +9,12 @@ def load_model():
     model_id = "meta-llama/Llama-3.2-3B-Instruct"
     checkpoint_path = "./llama3-medchatbot/checkpoint-17850"
 
-    # Try loading tokenizer from Hugging Face, fallback to checkpoint
+    # Load tokenizer from the base model (required for LLaMA)
     try:
         tokenizer = AutoTokenizer.from_pretrained(model_id)
     except Exception as e:
-        st.warning("Failed to load tokenizer from Hugging Face. Using checkpoint.")
-        tokenizer = AutoTokenizer.from_pretrained(checkpoint_path)
+        st.error("Failed to load tokenizer from Hugging Face. Please ensure the model is accessible or provide a token via Streamlit secrets.")
+        raise  # Stop if tokenizer fails, as it's critical
     tokenizer.pad_token = tokenizer.eos_token
 
     bnb_config = BitsAndBytesConfig(
@@ -24,7 +24,7 @@ def load_model():
         bnb_4bit_quant_type="nf4"
     )
 
-    # Try loading base model from Hugging Face
+    # Load base model from Hugging Face
     try:
         base_model = AutoModelForCausalLM.from_pretrained(
             model_id,
@@ -32,8 +32,8 @@ def load_model():
             device_map="auto"
         )
     except Exception as e:
-        st.warning("Failed to load base model from Hugging Face. Check access or network.")
-        raise  # Re-raise to stop if base model fails
+        st.error("Failed to load base model from Hugging Face. Check access or network.")
+        raise  # Stop if base model fails
 
     # Apply PEFT weights from checkpoint
     model = PeftModel.from_pretrained(base_model, checkpoint_path)
