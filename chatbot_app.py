@@ -6,8 +6,8 @@ import torch
 # Load model and tokenizer once
 @st.cache_resource
 def load_model():
-    model_id = "meta-llama/Llama-3.2-3B-Instruct"
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    checkpoint_path = "./llama3-medchatbot/checkpoint-17850"
+    tokenizer = AutoTokenizer.from_pretrained(checkpoint_path)
     tokenizer.pad_token = tokenizer.eos_token
 
     bnb_config = BitsAndBytesConfig(
@@ -17,13 +17,9 @@ def load_model():
         bnb_4bit_quant_type="nf4"
     )
 
-    base_model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        quantization_config=bnb_config,
-        device_map="auto"
-    )
-
-    model = PeftModel.from_pretrained(base_model, "./llama3-medchatbot/checkpoint-17850")
+    # Load base model separately if needed, or assume checkpoint includes it
+    base_model = AutoModelForCausalLM.from_pretrained(checkpoint_path, quantization_config=bnb_config, device_map="auto")
+    model = PeftModel.from_pretrained(base_model, checkpoint_path)
     model.eval()
 
     return tokenizer, model
