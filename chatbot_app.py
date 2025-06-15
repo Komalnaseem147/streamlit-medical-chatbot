@@ -6,9 +6,15 @@ import torch
 # Load model and tokenizer once
 @st.cache_resource
 def load_model():
-    # Load tokenizer from the base model
     model_id = "meta-llama/Llama-3.2-3B-Instruct"
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    checkpoint_path = "./llama3-medchatbot/checkpoint-17850"
+
+    # Try loading tokenizer from Hugging Face, fallback to checkpoint
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(model_id)
+    except Exception as e:
+        st.warning("Failed to load tokenizer from Hugging Face. Using checkpoint.")
+        tokenizer = AutoTokenizer.from_pretrained(checkpoint_path)
     tokenizer.pad_token = tokenizer.eos_token
 
     bnb_config = BitsAndBytesConfig(
@@ -18,15 +24,18 @@ def load_model():
         bnb_4bit_quant_type="nf4"
     )
 
-    # Load base model
-    base_model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        quantization_config=bnb_config,
-        device_map="auto"
-    )
+    # Try loading base model from Hugging Face
+    try:
+        base_model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            quantization_config=bnb_config,
+            device_map="auto"
+        )
+    except Exception as e:
+        st.warning("Failed to load base model from Hugging Face. Check access or network.")
+        raise  # Re-raise to stop if base model fails
 
     # Apply PEFT weights from checkpoint
-    checkpoint_path = "./llama3-medchatbot/checkpoint-17850"
     model = PeftModel.from_pretrained(base_model, checkpoint_path)
     model.eval()
 
